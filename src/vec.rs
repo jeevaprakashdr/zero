@@ -26,7 +26,7 @@ impl<T, const N: usize> Vec<T, N> {
         N
     }
 
-    fn push(&mut self, item: T) -> Result<(), Error> {
+    pub fn push(&mut self, item: T) -> Result<(), Error> {
         let capacity = self.capacity();
 
         if self.len < capacity {
@@ -40,7 +40,7 @@ impl<T, const N: usize> Vec<T, N> {
         }
     }
 
-    fn pop(&mut self) -> Option<T> {
+    pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
         } else {
@@ -53,11 +53,11 @@ impl<T, const N: usize> Vec<T, N> {
         }
     }
 
-    fn iter(&self) -> slice::Iter<'_, T> {
+    pub fn iter(&self) -> slice::Iter<'_, T> {
         unsafe { self.data.assume_init_ref().iter() }
     }
 
-    fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
         unsafe { self.data.assume_init_mut().iter_mut() }
     }
 }

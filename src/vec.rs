@@ -1,4 +1,4 @@
-use core::{marker::PhantomData, mem::MaybeUninit, slice};
+use core::{marker::PhantomData, mem::MaybeUninit, ops, slice};
 
 #[allow(dead_code)]
 pub struct Vec<T, const N: usize> {
@@ -89,6 +89,28 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut Vec<T, N> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
+    }
+}
+
+impl<T, const N: usize> ops::Deref for Vec<T, N> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        let collection_ptr = self.data.as_ptr() as *mut T;
+
+        let raw_ptr: *const [T] = core::ptr::slice_from_raw_parts(collection_ptr, self.len);
+        let slice: &[T] = unsafe { &*raw_ptr };
+
+        slice
+    }
+}
+
+impl<T, const N: usize> ops::DerefMut for Vec<T, N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        let collection_ptr = self.data.as_mut_ptr() as *mut T;
+
+        let raw_ptr: *mut [T] = core::ptr::slice_from_raw_parts_mut(collection_ptr, self.len);
+        unsafe { &mut *raw_ptr }
     }
 }
 
@@ -226,5 +248,35 @@ mod tests {
         assert_eq!(items.next(), Some(&10));
         assert_eq!(items.next(), Some(&20));
         assert_eq!(items.next(), Some(&30));
+    }
+
+    #[test]
+    fn deref() {
+        let mut v: Vec<i8, 5> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+        let _ = v.push(3);
+
+        let slice: &[i8] = &v;
+
+        assert_eq!(slice.len(), 3);
+    }
+
+    #[test]
+    fn deref_mut() {
+        let mut v: Vec<i8, 5> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+        let _ = v.push(3);
+
+        v[0] = 10;
+        v[1] *= 10;
+        v[2] *= 10;
+
+        assert_eq!(v[0], 10);
+        assert_eq!(v[1], 20);
+        assert_eq!(v[2], 30);
     }
 }

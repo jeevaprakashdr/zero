@@ -72,6 +72,26 @@ impl<T, const N: usize> Drop for Vec<T, N> {
     }
 }
 
+impl<'a, T, const N: usize> IntoIterator for &'a Vec<T, N> {
+    type Item = &'a T;
+
+    type IntoIter = slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, T, const N: usize> IntoIterator for &'a mut Vec<T, N> {
+    type Item = &'a mut T;
+
+    type IntoIter = slice::IterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::vec::{self, Vec};
@@ -172,5 +192,39 @@ mod tests {
         assert_eq!(items.next(), Some(&mut 1));
         assert_eq!(items.next(), Some(&mut 2));
         assert_eq!(items.next(), Some(&mut 3));
+    }
+
+    #[test]
+    fn into_iter() {
+        let mut v: Vec<i8, 5> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+        let _ = v.push(3);
+
+        let mut items = v.into_iter();
+
+        assert_eq!(items.next(), Some(&1));
+        assert_eq!(items.next(), Some(&2));
+        assert_eq!(items.next(), Some(&3));
+    }
+
+    #[test]
+    fn into_iter_mut() {
+        let mut v: Vec<i8, 5> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+        let _ = v.push(3);
+
+        for item in &mut v {
+            *item *= 10; // Mutate items in-place
+        }
+
+        let mut items = v.into_iter();
+
+        assert_eq!(items.next(), Some(&10));
+        assert_eq!(items.next(), Some(&20));
+        assert_eq!(items.next(), Some(&30));
     }
 }

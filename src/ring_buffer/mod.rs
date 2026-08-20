@@ -55,13 +55,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
     }
 
     fn len(&self) -> usize {
-        if self.head == self.tail {
-            0
-        } else if self.head > self.tail {
-            self.head - self.tail
-        } else {
-            self.tail - self.head
-        }
+        self.head.abs_diff(self.tail)
     }
 
     fn iter(&self) -> Iter<'_, T, N> {

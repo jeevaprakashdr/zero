@@ -2,7 +2,7 @@ use core::{marker::PhantomData, mem::MaybeUninit};
 
 pub struct RingBuffer<T, const N: usize> {
     _marker: PhantomData<T>,
-    data: MaybeUninit<[T; N]>,
+    buffer: MaybeUninit<[T; N]>,
     head: usize,
     tail: usize,
 }
@@ -17,7 +17,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
     pub const fn new() -> Self {
         Self {
             _marker: PhantomData,
-            data: MaybeUninit::uninit(),
+            buffer: MaybeUninit::uninit(),
             head: 0,
             tail: 0,
         }
@@ -30,7 +30,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
     pub fn enqueue(&mut self, item: T) -> Result<(), Error> {
         let nxt_tail = (self.tail + 1) % self.capacity();
         if nxt_tail != self.head {
-            let collection_start_ptr = self.data.as_mut_ptr() as *mut T;
+            let collection_start_ptr = self.buffer.as_mut_ptr() as *mut T;
             unsafe {
                 core::ptr::write(collection_start_ptr.add(self.tail), item);
             }
@@ -43,7 +43,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
 
     fn dequeue(&mut self) -> Option<T> {
         if self.head != self.tail {
-            let collection_start_ptr = self.data.as_mut_ptr() as *mut T;
+            let collection_start_ptr = self.buffer.as_mut_ptr() as *mut T;
             let item_ptr = unsafe { collection_start_ptr.add(self.head) };
             let item = unsafe { core::ptr::read(item_ptr) };
 
@@ -119,7 +119,7 @@ impl<'a, T, const N: usize> Iterator for Iter<'a, T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let collection_start_ptr: *const T = self.rb.data.as_ptr().cast::<T>();
+            let collection_start_ptr: *const T = self.rb.buffer.as_ptr().cast::<T>();
             let item_ptr = unsafe { collection_start_ptr.add(self.rb.head + self.index) };
             self.index = (self.index + 1) % N;
             Some(unsafe { &*item_ptr })
@@ -134,7 +134,7 @@ impl<'a, T, const N: usize> Iterator for IterMut<'a, T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let collection_start_ptr: *mut T = self.rb.data.as_mut_ptr().cast::<T>();
+            let collection_start_ptr: *mut T = self.rb.buffer.as_mut_ptr().cast::<T>();
             let item_ptr = unsafe { collection_start_ptr.add(self.rb.head + self.index) };
             self.index = (self.index + 1) % N;
             Some(unsafe { &mut *item_ptr })

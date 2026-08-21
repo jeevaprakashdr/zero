@@ -25,7 +25,7 @@ impl<const N: usize> String<N> {
 
     pub fn from(s: &str) -> Self {
         let mut new = String::new();
-        let _ = new.push_str(s);
+        new.push_str(s).unwrap();
         new
     }
 

@@ -1,3 +1,5 @@
+use core::slice;
+
 use crate::Vec;
 
 pub struct String<const N: usize> {
@@ -44,6 +46,18 @@ impl<const N: usize> String<N> {
             Err(Error::Full)
         }
     }
+
+    pub fn as_str(&self) -> &str {
+        let ptr = self.vec.data.as_ptr() as *const u8;
+        let slice = unsafe { slice::from_raw_parts(ptr, self.vec.len) };
+        unsafe { core::str::from_utf8_unchecked(slice) }
+    }
+
+    pub fn as_mut_str(&mut self) -> &mut str {
+        let ptr = self.vec.data.as_mut_ptr() as *mut u8;
+        let slice = unsafe { slice::from_raw_parts_mut(ptr, self.vec.len) };
+        unsafe { core::str::from_utf8_unchecked_mut(slice) }
+    }
 }
 
 #[cfg(test)]
@@ -74,5 +88,22 @@ mod tests {
         assert!(s.push_str("abc").is_ok());
         assert!(!s.is_empty());
         assert_eq!(s.len(), 3);
+    }
+
+    #[test]
+    fn as_str() {
+        let s: String<3> = String::from("abc");
+
+        assert_eq!(s.as_str(), "abc");
+    }
+
+    #[test]
+    fn as_mut_str() {
+        let mut s: String<3> = String::from("abc");
+
+        let s = s.as_mut_str();
+        s.make_ascii_uppercase();
+
+        assert_eq!(s, "ABC");
     }
 }

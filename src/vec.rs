@@ -2,9 +2,9 @@ use core::{marker::PhantomData, mem::MaybeUninit, ops, slice};
 
 #[allow(dead_code)]
 pub struct Vec<T, const N: usize> {
-    _marker: PhantomData<T>,
-    data: MaybeUninit<[T; N]>,
-    len: usize,
+    pub(crate) _marker: PhantomData<T>,
+    pub(crate) data: MaybeUninit<[T; N]>,
+    pub(crate) len: usize,
 }
 
 #[allow(dead_code)]

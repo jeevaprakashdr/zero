@@ -7,7 +7,7 @@ pub struct Vec<T, const N: usize> {
     pub(crate) len: usize,
 }
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub enum Error {
     Full,
 }
@@ -50,6 +50,16 @@ impl<T, const N: usize> Vec<T, N> {
             let item = unsafe { core::ptr::read(item_ptr) };
 
             Some(item)
+        }
+    }
+
+    pub fn truncate(&mut self, len: usize) {
+        while len < self.len {
+            self.len -= 1;
+            let ptr: *mut T = self.data.as_mut_ptr() as *mut T;
+            let ptr: *mut T = unsafe { ptr.add(self.len) };
+
+            unsafe { core::ptr::drop_in_place(ptr) };
         }
     }
 }
@@ -222,6 +232,24 @@ mod tests {
         assert_eq!(items.next(), None);
     }
 
+    #[test]
+    fn truncate() {
+        let mut v: Vec<i8, 5> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+        let _ = v.push(3);
+        let _ = v.push(4);
+        let _ = v.push(5);
+
+        v.truncate(2);
+
+        assert_eq!(v.len, 2);
+
+        let mut items = v.iter();
+        assert_eq!(items.next(), Some(&1));
+        assert_eq!(items.next(), Some(&2));
+        assert_eq!(items.next(), None);
     }
 
     #[test]

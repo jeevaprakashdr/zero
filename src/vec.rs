@@ -2,12 +2,12 @@ use core::{marker::PhantomData, mem::MaybeUninit, ops, slice};
 
 #[allow(dead_code)]
 pub struct Vec<T, const N: usize> {
-    _marker: PhantomData<T>,
-    data: MaybeUninit<[T; N]>,
-    len: usize,
+    pub(crate) _marker: PhantomData<T>,
+    pub(crate) data: MaybeUninit<[T; N]>,
+    pub(crate) len: usize,
 }
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub enum Error {
     Full,
 }
@@ -53,12 +53,29 @@ impl<T, const N: usize> Vec<T, N> {
         }
     }
 
-    pub fn iter(&self) -> slice::Iter<'_, T> {
-        unsafe { self.data.assume_init_ref().iter() }
+    pub fn truncate(&mut self, len: usize) {
+        while len < self.len {
+            self.len -= 1;
+            let ptr: *mut T = self.data.as_mut_ptr() as *mut T;
+            let ptr: *mut T = unsafe { ptr.add(self.len) };
+
+            unsafe { core::ptr::drop_in_place(ptr) };
+        }
     }
 
-    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
-        unsafe { self.data.assume_init_mut().iter_mut() }
+    pub fn clear(&mut self) {
+        self.truncate(0);
+    }
+}
+
+impl<T, const N: usize> PartialEq<Vec<T, N>> for Vec<T, N>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Vec<T, N>) -> bool {
+        self._marker == other._marker
+            && unsafe { self.data.assume_init_ref() == other.data.assume_init_ref() }
+            && self.len == other.len
     }
 }
 
@@ -199,6 +216,13 @@ mod tests {
         assert_eq!(items.next(), Some(&1));
         assert_eq!(items.next(), Some(&2));
         assert_eq!(items.next(), Some(&3));
+
+        let _ = v.pop();
+
+        let mut items = v.iter();
+        assert_eq!(items.next(), Some(&1));
+        assert_eq!(items.next(), Some(&2));
+        assert_eq!(items.next(), None);
     }
 
     #[test]
@@ -214,6 +238,49 @@ mod tests {
         assert_eq!(items.next(), Some(&mut 1));
         assert_eq!(items.next(), Some(&mut 2));
         assert_eq!(items.next(), Some(&mut 3));
+
+        let _ = v.pop();
+
+        let mut items = v.iter_mut();
+        assert_eq!(items.next(), Some(&mut 1));
+        assert_eq!(items.next(), Some(&mut 2));
+        assert_eq!(items.next(), None);
+    }
+
+    #[test]
+    fn truncate() {
+        let mut v: Vec<i8, 5> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+        let _ = v.push(3);
+        let _ = v.push(4);
+        let _ = v.push(5);
+
+        v.truncate(2);
+
+        assert_eq!(v.len, 2);
+
+        let mut items = v.iter();
+        assert_eq!(items.next(), Some(&1));
+        assert_eq!(items.next(), Some(&2));
+        assert_eq!(items.next(), None);
+    }
+
+    #[test]
+    fn clear() {
+        let mut v: Vec<i8, 2> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+
+        v.clear();
+
+        assert_eq!(v.len, 0);
+        assert!(v.is_empty());
+
+        let mut items = v.iter();
+        assert_eq!(items.next(), None);
     }
 
     #[test]

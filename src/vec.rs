@@ -62,6 +62,10 @@ impl<T, const N: usize> Vec<T, N> {
             unsafe { core::ptr::drop_in_place(ptr) };
         }
     }
+
+    pub fn clear(&mut self) {
+        self.truncate(0);
+    }
 }
 
 impl<T, const N: usize> Drop for Vec<T, N> {
@@ -249,6 +253,22 @@ mod tests {
         let mut items = v.iter();
         assert_eq!(items.next(), Some(&1));
         assert_eq!(items.next(), Some(&2));
+        assert_eq!(items.next(), None);
+    }
+
+    #[test]
+    fn clear() {
+        let mut v: Vec<i8, 2> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+
+        v.clear();
+
+        assert_eq!(v.len, 0);
+        assert!(v.is_empty());
+
+        let mut items = v.iter();
         assert_eq!(items.next(), None);
     }
 

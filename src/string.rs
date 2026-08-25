@@ -86,6 +86,13 @@ impl<const N: usize> String<N> {
         self.vec.truncate(len)
     }
 
+    fn pop(&mut self) -> Option<u8> {
+        self.vec.pop()
+    }
+
+    fn clear(&mut self) {
+        self.vec.clear()
+    }
     pub fn as_str(&self) -> &str {
         let ptr = self.vec.data.as_ptr() as *const u8;
         let slice = unsafe { slice::from_raw_parts(ptr, self.vec.len) };
@@ -203,6 +210,43 @@ mod tests {
 
         assert_eq!(s.len(), 2);
         assert_eq!(s.as_str(), "ab");
+    }
+
+    #[test]
+    fn pop() {
+        let mut s: String<4> = String::from("abcd");
+
+        assert!(s.pop().is_some());
+        assert_eq!(s.len(), 3);
+        assert_eq!(s.as_str(), "abc");
+    }
+
+    #[test]
+    fn is_empty() {
+        let mut s: String<4> = String::new();
+
+        assert_eq!(s.len(), 0);
+        assert_eq!(s.as_str(), "");
+        assert!(s.is_empty());
+
+        let _ = s.push('a');
+        assert!(!s.is_empty());
+
+        assert!(s.pop().is_some());
+        assert!(s.is_empty());
+        assert_eq!(s.len(), 0);
+        assert_eq!(s.as_str(), "");
+    }
+
+    #[test]
+    fn clear() {
+        let mut s: String<4> = String::from("abcd");
+
+        s.clear();
+
+        assert!(s.is_empty());
+        assert_eq!(s.len(), 0);
+        assert_eq!(s.as_str(), "");
     }
 
     #[test]

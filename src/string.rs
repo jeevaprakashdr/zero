@@ -1,4 +1,8 @@
-use core::{slice, str::Utf8Error};
+use core::{
+    ops::{Deref, DerefMut},
+    slice,
+    str::Utf8Error,
+};
 
 use crate::Vec;
 
@@ -57,8 +61,13 @@ impl<const N: usize> String<N> {
         &self.vec
     }
 
+    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
+        let ptr = self.vec.as_ptr() as *mut u8;
+        unsafe { slice::from_raw_parts_mut(ptr, self.len()) }
+    }
+
     pub fn push(&mut self, c: char) -> Result<(), Error> {
-        if self.vec.len + 1 <= self.vec.capacity() {
+        if self.vec.len < self.vec.capacity() {
             let _ = self.vec.push(c as u8);
             Ok(())
         } else {
@@ -104,6 +113,33 @@ impl<const N: usize> String<N> {
         let ptr = self.vec.data.as_mut_ptr() as *mut u8;
         let slice = unsafe { slice::from_raw_parts_mut(ptr, self.vec.len) };
         unsafe { core::str::from_utf8_unchecked_mut(slice) }
+    }
+}
+
+impl<const N: usize> core::fmt::Debug for String<N> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let slice: &str = self;
+        slice.fmt(f)
+    }
+}
+
+impl<const N: usize> PartialEq<&str> for String<N> {
+    fn eq(&self, other: &&str) -> bool {
+        &self.as_str() == other
+    }
+}
+
+impl<const N: usize> Deref for String<N> {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<const N: usize> DerefMut for String<N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_str()
     }
 }
 
@@ -186,6 +222,17 @@ mod tests {
     }
 
     #[test]
+    fn as_bytes_mut() {
+        let str = "abc";
+        let mut s: String<3> = String::from(str);
+
+        let actual: &mut [u8] = s.as_bytes_mut();
+        actual[0] = 'z' as u8;
+
+        assert_eq!(&actual[..], &['z' as u8, 'b' as u8, 'c' as u8]);
+    }
+
+    #[test]
     fn push() {
         let mut s: String<4> = String::from("abc");
 
@@ -265,5 +312,23 @@ mod tests {
         s.make_ascii_uppercase();
 
         assert_eq!(s, "ABC");
+    }
+
+    #[test]
+    fn deref() {
+        let s: String<4> = String::from("abcd");
+
+        let str: &str = &s;
+
+        assert_eq!(&str, &"abcd");
+    }
+
+    #[test]
+    fn deref_mut() {
+        let mut s: String<4> = String::from("abcd");
+
+        s.make_ascii_uppercase();
+
+        assert_eq!(&s, &"ABCD");
     }
 }

@@ -68,6 +68,17 @@ impl<T, const N: usize> Vec<T, N> {
     }
 }
 
+impl<T, const N: usize> PartialEq<Vec<T, N>> for Vec<T, N>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Vec<T, N>) -> bool {
+        self._marker == other._marker
+            && unsafe { self.data.assume_init_ref() == other.data.assume_init_ref() }
+            && self.len == other.len
+    }
+}
+
 impl<T, const N: usize> Drop for Vec<T, N> {
     fn drop(&mut self) {
         let collection_ptr = self.data.as_mut_ptr() as *mut T;

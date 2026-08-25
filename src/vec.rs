@@ -52,14 +52,6 @@ impl<T, const N: usize> Vec<T, N> {
             Some(item)
         }
     }
-
-    pub fn iter(&self) -> slice::Iter<'_, T> {
-        unsafe { self.data.assume_init_ref().iter() }
-    }
-
-    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
-        unsafe { self.data.assume_init_mut().iter_mut() }
-    }
 }
 
 impl<T, const N: usize> Drop for Vec<T, N> {
@@ -199,6 +191,13 @@ mod tests {
         assert_eq!(items.next(), Some(&1));
         assert_eq!(items.next(), Some(&2));
         assert_eq!(items.next(), Some(&3));
+
+        let _ = v.pop();
+
+        let mut items = v.iter();
+        assert_eq!(items.next(), Some(&1));
+        assert_eq!(items.next(), Some(&2));
+        assert_eq!(items.next(), None);
     }
 
     #[test]
@@ -214,6 +213,15 @@ mod tests {
         assert_eq!(items.next(), Some(&mut 1));
         assert_eq!(items.next(), Some(&mut 2));
         assert_eq!(items.next(), Some(&mut 3));
+
+        let _ = v.pop();
+
+        let mut items = v.iter_mut();
+        assert_eq!(items.next(), Some(&mut 1));
+        assert_eq!(items.next(), Some(&mut 2));
+        assert_eq!(items.next(), None);
+    }
+
     }
 
     #[test]

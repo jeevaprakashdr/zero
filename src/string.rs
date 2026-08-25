@@ -35,7 +35,7 @@ impl<const N: usize> String<N> {
         new
     }
 
-    fn from_utf8(v: Vec<u8, N>) -> Result<String<N>, Utf8Error> {
+    pub fn from_utf8(v: Vec<u8, N>) -> Result<String<N>, Utf8Error> {
         {
             let ptr = v.data.as_ptr() as *const u8;
             let slice = unsafe { slice::from_raw_parts(ptr, v.len) };
@@ -45,19 +45,19 @@ impl<const N: usize> String<N> {
         Ok(String { vec: v })
     }
 
-    fn from_utf8_unchecked(v: Vec<u8, N>) -> String<N> {
+    pub fn from_utf8_unchecked(v: Vec<u8, N>) -> String<N> {
         String { vec: v }
     }
 
-    fn into_bytes(self) -> Vec<u8, N> {
+    pub fn into_bytes(self) -> Vec<u8, N> {
         self.vec
     }
 
-    fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &[u8] {
         &self.vec
     }
 
-    fn push(&mut self, c: char) -> Result<(), Error> {
+    pub fn push(&mut self, c: char) -> Result<(), Error> {
         if self.vec.len + 1 <= self.vec.capacity() {
             let _ = self.vec.push(c as u8);
             Ok(())
@@ -82,17 +82,18 @@ impl<const N: usize> String<N> {
         }
     }
 
-    fn truncate(&mut self, len: usize) {
+    pub fn truncate(&mut self, len: usize) {
         self.vec.truncate(len)
     }
 
-    fn pop(&mut self) -> Option<u8> {
+    pub fn pop(&mut self) -> Option<u8> {
         self.vec.pop()
     }
 
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.vec.clear()
     }
+
     pub fn as_str(&self) -> &str {
         let ptr = self.vec.data.as_ptr() as *const u8;
         let slice = unsafe { slice::from_raw_parts(ptr, self.vec.len) };

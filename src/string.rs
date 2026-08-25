@@ -17,6 +17,10 @@ impl<const N: usize> String<N> {
         Self { vec: Vec::new() }
     }
 
+    pub fn capacity(&self) -> usize {
+        N
+    }
+
     pub fn is_empty(&self) -> bool {
         self.vec.is_empty()
     }
@@ -44,7 +48,15 @@ impl<const N: usize> String<N> {
     fn from_utf8_unchecked(v: Vec<u8, N>) -> String<N> {
         String { vec: v }
     }
-    
+
+    fn into_bytes(self) -> Vec<u8, N> {
+        self.vec
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        &self.vec
+    }
+
     fn push(&mut self, c: char) -> Result<(), Error> {
         if self.vec.len + 1 <= self.vec.capacity() {
             let _ = self.vec.push(c as u8);
@@ -70,6 +82,10 @@ impl<const N: usize> String<N> {
         }
     }
 
+    fn truncate(&mut self, len: usize) {
+        self.vec.truncate(len)
+    }
+
     pub fn as_str(&self) -> &str {
         let ptr = self.vec.data.as_ptr() as *const u8;
         let slice = unsafe { slice::from_raw_parts(ptr, self.vec.len) };
@@ -81,7 +97,6 @@ impl<const N: usize> String<N> {
         let slice = unsafe { slice::from_raw_parts_mut(ptr, self.vec.len) };
         unsafe { core::str::from_utf8_unchecked_mut(slice) }
     }
-
 }
 
 #[cfg(test)]
@@ -98,6 +113,20 @@ mod tests {
     }
 
     #[test]
+    fn len() {
+        let s: String<6> = String::from("abc");
+
+        assert_eq!(s.len(), 3);
+    }
+
+    #[test]
+    fn capacity() {
+        let s: String<6> = String::from("abc");
+
+        assert_eq!(s.capacity(), 6);
+    }
+
+    #[test]
     fn from() {
         let s: String<3> = String::from("abc");
 
@@ -108,8 +137,8 @@ mod tests {
     #[test]
     fn from_utf8() {
         let mut v: Vec<u8, 3> = Vec::new();
-        let _ = v.push('a' as u8);
-        let _ = v.push('b' as u8);
+        v.push('a' as u8).unwrap();
+        v.push('b' as u8).unwrap();
 
         let s = String::from_utf8(v).unwrap();
         assert_eq!(s.as_str(), "ab");
@@ -118,12 +147,34 @@ mod tests {
     #[test]
     fn from_utf8_unchecked() {
         let mut v: Vec<u8, 3> = Vec::new();
-        let _ = v.push(0);
+        v.push(0).unwrap();
+        v.push(159).unwrap();
 
         let v = String::from_utf8_unchecked(v);
 
         assert!(!v.is_empty());
-        assert_eq!(v.len(), 1);
+        assert_eq!(v.len(), 2);
+    }
+
+    #[test]
+    fn into_bytes() {
+        let str = "abc";
+        let s: String<3> = String::from(str);
+
+        let actual: Vec<u8, 3> = s.into_bytes();
+
+        assert_eq!(actual.len, 3);
+        assert_eq!(&actual[..], &['a' as u8, 'b' as u8, 'c' as u8]);
+    }
+
+    #[test]
+    fn as_bytes() {
+        let str = "abc";
+        let s: String<3> = String::from(str);
+
+        let actual: &[u8] = s.as_bytes();
+
+        assert_eq!(&actual[..], &['a' as u8, 'b' as u8, 'c' as u8]);
     }
 
     #[test]
@@ -142,6 +193,16 @@ mod tests {
         assert!(s.push_str("abc").is_ok());
         assert!(!s.is_empty());
         assert_eq!(s.len(), 3);
+    }
+
+    #[test]
+    fn truncate() {
+        let mut s: String<4> = String::from("abcd");
+
+        s.truncate(2);
+
+        assert_eq!(s.len(), 2);
+        assert_eq!(s.as_str(), "ab");
     }
 
     #[test]

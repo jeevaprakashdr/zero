@@ -127,8 +127,9 @@ impl<'a, T, const N: usize> Iterator for Iter<'a, T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let buffer: &MaybeUninit<[T; N]> = unsafe { self.rb.buffer.as_ref_unchecked() };
-            let collection_start_ptr: *const T = buffer.as_ptr().cast::<T>();
+            let collection_start_ptr =
+                unsafe { (*self.rb.buffer.get()).as_ptr().cast::<T>() as *const T };
+
             let item_ptr = unsafe {
                 let head_offset = self.rb.head.load(Ordering::Relaxed);
                 collection_start_ptr.add(head_offset + self.index)

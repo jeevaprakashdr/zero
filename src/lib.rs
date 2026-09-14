@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(unsafe_cell_access)]
 
 mod ring_buffer;
 mod string;

@@ -1,10 +1,17 @@
-use core::{marker::PhantomData, mem::MaybeUninit};
+use core::{
+    cell::UnsafeCell,
+    marker::PhantomData,
+    mem::MaybeUninit,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
+mod spsc;
 
 pub struct RingBuffer<T, const N: usize> {
     _marker: PhantomData<T>,
-    buffer: MaybeUninit<[T; N]>,
-    head: usize,
-    tail: usize,
+    buffer: UnsafeCell<MaybeUninit<[T; N]>>,
+    head: AtomicUsize,
+    tail: AtomicUsize,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -17,9 +24,9 @@ impl<T, const N: usize> RingBuffer<T, N> {
     pub const fn new() -> Self {
         Self {
             _marker: PhantomData,
-            buffer: MaybeUninit::uninit(),
-            head: 0,
-            tail: 0,
+            buffer: UnsafeCell::new(MaybeUninit::uninit()),
+            head: AtomicUsize::new(0),
+            tail: AtomicUsize::new(0),
         }
     }
 
@@ -28,34 +35,41 @@ impl<T, const N: usize> RingBuffer<T, N> {
     }
 
     pub fn enqueue(&mut self, item: T) -> Result<(), Error> {
-        let nxt_tail = (self.tail + 1) % self.capacity();
-        if nxt_tail != self.head {
-            let collection_start_ptr = self.buffer.as_mut_ptr() as *mut T;
-            unsafe {
-                core::ptr::write(collection_start_ptr.add(self.tail), item);
-            }
-            self.tail = nxt_tail;
-            Ok(())
-        } else {
-            Err(Error::Full)
+        let head = self.head.load(Ordering::Acquire);
+        let tail = self.tail.load(Ordering::Relaxed);
+
+        if (tail + 1) % N == head {
+            return Err(Error::Full);
         }
+
+        let collection_start_ptr = self.buffer.get_mut().as_mut_ptr() as *mut T;
+        unsafe {
+            core::ptr::write(collection_start_ptr.add(tail), item);
+        }
+        self.tail.store((tail + 1) % N, Ordering::Release);
+        Ok(())
     }
 
     fn dequeue(&mut self) -> Option<T> {
-        if self.head != self.tail {
-            let collection_start_ptr = self.buffer.as_mut_ptr() as *mut T;
-            let item_ptr = unsafe { collection_start_ptr.add(self.head) };
-            let item = unsafe { core::ptr::read(item_ptr) };
+        let head = self.head.load(Ordering::Acquire);
+        let tail = self.tail.load(Ordering::Relaxed);
 
-            self.head = (self.head + 1) % self.capacity();
-            Some(item)
-        } else {
-            None
+        if head == tail {
+            return None;
         }
+
+        let collection_start_ptr = self.buffer.get_mut().as_mut_ptr() as *mut T;
+        let item_ptr = unsafe { collection_start_ptr.add(head) };
+        let item = unsafe { core::ptr::read(item_ptr) };
+
+        self.head.store((head + 1) % N, Ordering::Release);
+        Some(item)
     }
 
     fn len(&self) -> usize {
-        self.head.abs_diff(self.tail)
+        let head = self.head.load(Ordering::Relaxed);
+        let tail = self.tail.load(Ordering::Relaxed);
+        head.abs_diff(tail)
     }
 
     fn iter(&self) -> Iter<'_, T, N> {
@@ -113,8 +127,12 @@ impl<'a, T, const N: usize> Iterator for Iter<'a, T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let collection_start_ptr: *const T = self.rb.buffer.as_ptr().cast::<T>();
-            let item_ptr = unsafe { collection_start_ptr.add(self.rb.head + self.index) };
+            let buffer: &MaybeUninit<[T; N]> = unsafe { self.rb.buffer.as_ref_unchecked() };
+            let collection_start_ptr: *const T = buffer.as_ptr().cast::<T>();
+            let item_ptr = unsafe {
+                let head_offset = self.rb.head.load(Ordering::Relaxed);
+                collection_start_ptr.add(head_offset + self.index)
+            };
             self.index = (self.index + 1) % N;
             Some(unsafe { &*item_ptr })
         } else {
@@ -128,8 +146,11 @@ impl<'a, T, const N: usize> Iterator for IterMut<'a, T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let collection_start_ptr: *mut T = self.rb.buffer.as_mut_ptr().cast::<T>();
-            let item_ptr = unsafe { collection_start_ptr.add(self.rb.head + self.index) };
+            let collection_start_ptr: *mut T = self.rb.buffer.get_mut().as_mut_ptr().cast::<T>();
+            let item_ptr = unsafe {
+                let head_offset = self.rb.head.load(Ordering::Relaxed);
+                collection_start_ptr.add(head_offset + self.index)
+            };
             self.index = (self.index + 1) % N;
             Some(unsafe { &mut *item_ptr })
         } else {
@@ -140,6 +161,8 @@ impl<'a, T, const N: usize> Iterator for IterMut<'a, T, N> {
 
 #[cfg(test)]
 mod tests {
+    use core::sync::atomic::Ordering;
+
     use crate::ring_buffer::Error;
     use crate::ring_buffer::RingBuffer;
 
@@ -147,8 +170,8 @@ mod tests {
     fn new() {
         let rb: RingBuffer<i8, 5> = RingBuffer::new();
 
-        assert_eq!(rb.head, 0);
-        assert_eq!(rb.tail, 0);
+        assert_eq!(rb.head.load(Ordering::Relaxed), 0);
+        assert_eq!(rb.tail.load(Ordering::Relaxed), 0);
     }
 
     #[test]
@@ -164,7 +187,7 @@ mod tests {
         let _ = rb.enqueue(1);
         let _ = rb.enqueue(2);
 
-        assert_eq!(rb.tail, 2);
+        assert_eq!(rb.tail.load(Ordering::Relaxed), 2);
     }
 
     #[test]
@@ -176,7 +199,7 @@ mod tests {
         let result = rb.enqueue(3);
 
         assert_eq!(result, Err(Error::Full));
-        assert_eq!(rb.tail, 2);
+        assert_eq!(rb.tail.load(Ordering::Relaxed), 2);
     }
 
     #[test]
@@ -188,8 +211,8 @@ mod tests {
         let item = rb.dequeue();
 
         assert_eq!(item, Some(1));
-        assert_eq!(rb.head, 1);
-        assert_eq!(rb.tail, 2)
+        assert_eq!(rb.head.load(Ordering::Relaxed), 1);
+        assert_eq!(rb.tail.load(Ordering::Relaxed), 2);
     }
 
     #[test]
@@ -204,8 +227,8 @@ mod tests {
         let item = rb.dequeue();
 
         assert_eq!(item, None);
-        assert_eq!(rb.head, 2);
-        assert_eq!(rb.tail, 2)
+        assert_eq!(rb.head.load(Ordering::Relaxed), 2);
+        assert_eq!(rb.tail.load(Ordering::Relaxed), 2);
     }
 
     #[test]

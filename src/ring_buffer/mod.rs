@@ -44,9 +44,9 @@ impl<T, const N: usize> RingBuffer<T, N> {
             return Err(Error::Full);
         }
 
-        let collection_start_ptr = unsafe { (*self.buffer.get()).as_mut_ptr() as *mut T };
+        let buffer_raw_ptr = unsafe { (*self.buffer.get()).as_mut_ptr() as *mut T };
         unsafe {
-            core::ptr::write(collection_start_ptr.add(tail), item);
+            core::ptr::write(buffer_raw_ptr.add(tail), item);
         }
         self.tail.store((tail + 1) % N, Ordering::Release);
         Ok(())
@@ -60,8 +60,8 @@ impl<T, const N: usize> RingBuffer<T, N> {
             return None;
         }
 
-        let collection_start_ptr = unsafe { (*self.buffer.get()).as_mut_ptr() as *mut T };
-        let item_ptr = unsafe { collection_start_ptr.add(head) };
+        let buffer_raw_ptr = unsafe { (*self.buffer.get()).as_mut_ptr() as *mut T };
+        let item_ptr = unsafe { buffer_raw_ptr.add(head) };
         let item = unsafe { core::ptr::read(item_ptr) };
 
         self.head.store((head + 1) % N, Ordering::Release);
@@ -129,12 +129,12 @@ impl<'a, T, const N: usize> Iterator for Iter<'a, T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let collection_start_ptr =
+            let buffer_raw_ptr =
                 unsafe { (*self.rb.buffer.get()).as_ptr().cast::<T>() as *const T };
 
             let item_ptr = unsafe {
                 let head_offset = self.rb.head.load(Ordering::Relaxed);
-                collection_start_ptr.add(head_offset + self.index)
+                buffer_raw_ptr.add(head_offset + self.index)
             };
             self.index = (self.index + 1) % N;
             Some(unsafe { &*item_ptr })
@@ -149,11 +149,11 @@ impl<'a, T, const N: usize> Iterator for IterMut<'a, T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let collection_start_ptr: *mut T =
+            let buffer_raw_ptr: *mut T =
                 unsafe { (*self.rb.buffer.get()).as_mut_ptr().cast::<T>() };
             let item_ptr = unsafe {
                 let head_offset = self.rb.head.load(Ordering::Relaxed);
-                collection_start_ptr.add(head_offset + self.index)
+                buffer_raw_ptr.add(head_offset + self.index)
             };
             self.index = (self.index + 1) % N;
             Some(unsafe { &mut *item_ptr })

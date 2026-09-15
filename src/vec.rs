@@ -30,8 +30,8 @@ impl<T, const N: usize> Vec<T, N> {
         let capacity = self.capacity();
 
         if self.len < capacity {
-            let collection_start_ptr = self.data.as_mut_ptr() as *mut T;
-            unsafe { core::ptr::write(collection_start_ptr.add(self.len), item) };
+            let buffer_raw_ptr = self.data.as_mut_ptr() as *mut T;
+            unsafe { core::ptr::write(buffer_raw_ptr.add(self.len), item) };
             self.len += 1;
 
             Ok(())
@@ -45,8 +45,8 @@ impl<T, const N: usize> Vec<T, N> {
             None
         } else {
             self.len -= 1;
-            let collection_start_ptr = self.data.as_mut_ptr() as *mut T;
-            let item_ptr = unsafe { collection_start_ptr.add(self.len) };
+            let buffer_raw_ptr = self.data.as_mut_ptr() as *mut T;
+            let item_ptr = unsafe { buffer_raw_ptr.add(self.len) };
             let item = unsafe { core::ptr::read(item_ptr) };
 
             Some(item)

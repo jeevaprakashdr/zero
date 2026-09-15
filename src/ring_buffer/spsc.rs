@@ -1,4 +1,4 @@
-use core::{marker::PhantomData, sync::atomic::Ordering};
+use core::{marker::PhantomData, mem::MaybeUninit, sync::atomic::Ordering};
 
 use crate::{RingBuffer, ring_buffer::Error};
 
@@ -32,8 +32,10 @@ impl<'a, T, const N: usize> Producer<'a, T, N> {
         }
 
         unsafe {
-            let collection_start_ptr = (*self.rb.buffer.get()).as_mut_ptr() as *mut T;
-            core::ptr::write(collection_start_ptr.add(tail), item);
+            let buffer_raw_ptr = self.rb.buffer.get() as *mut MaybeUninit<T>;
+            let item_ptr = buffer_raw_ptr.add(tail) as *mut T;
+
+            core::ptr::write(item_ptr, item);
         }
 
         self.rb.tail.store((tail + 1) % N, Ordering::Release);
@@ -60,8 +62,9 @@ impl<'a, T, const N: usize> Consumer<'a, T, N> {
         }
 
         unsafe {
-            let collection_start_ptr = (*self.rb.buffer.get()).as_mut_ptr() as *mut T;
-            let item_ptr = collection_start_ptr.add(head);
+            let buffer_raw_ptr = self.rb.buffer.get() as *mut MaybeUninit<T>;
+            let item_ptr = buffer_raw_ptr.add(head) as *mut T;
+
             let item = core::ptr::read(item_ptr);
             self.rb.head.store((head + 1) % N, Ordering::Release);
             Some(item)

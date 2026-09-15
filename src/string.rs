@@ -62,8 +62,7 @@ impl<const N: usize> String<N> {
     }
 
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        let ptr = self.vec.as_ptr() as *mut u8;
-        unsafe { slice::from_raw_parts_mut(ptr, self.len()) }
+        &mut self.vec[..]
     }
 
     pub fn push(&mut self, c: char) -> Result<(), Error> {

@@ -19,6 +19,8 @@ pub enum Error {
     Full,
 }
 
+unsafe impl<T: Send, const N: usize> Sync for RingBuffer<T, N> {}
+
 #[allow(dead_code)]
 impl<T, const N: usize> RingBuffer<T, N> {
     pub const fn new() -> Self {
@@ -34,7 +36,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
         N
     }
 
-    pub fn enqueue(&mut self, item: T) -> Result<(), Error> {
+    pub fn enqueue(&self, item: T) -> Result<(), Error> {
         let head = self.head.load(Ordering::Acquire);
         let tail = self.tail.load(Ordering::Relaxed);
 
@@ -42,7 +44,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
             return Err(Error::Full);
         }
 
-        let collection_start_ptr = self.buffer.get_mut().as_mut_ptr() as *mut T;
+        let collection_start_ptr = unsafe { (*self.buffer.get()).as_mut_ptr() as *mut T };
         unsafe {
             core::ptr::write(collection_start_ptr.add(tail), item);
         }
@@ -50,15 +52,15 @@ impl<T, const N: usize> RingBuffer<T, N> {
         Ok(())
     }
 
-    fn dequeue(&mut self) -> Option<T> {
-        let head = self.head.load(Ordering::Acquire);
-        let tail = self.tail.load(Ordering::Relaxed);
+    pub fn dequeue(&self) -> Option<T> {
+        let tail = self.tail.load(Ordering::Acquire);
+        let head = self.head.load(Ordering::Relaxed);
 
         if head == tail {
             return None;
         }
 
-        let collection_start_ptr = self.buffer.get_mut().as_mut_ptr() as *mut T;
+        let collection_start_ptr = unsafe { (*self.buffer.get()).as_mut_ptr() as *mut T };
         let item_ptr = unsafe { collection_start_ptr.add(head) };
         let item = unsafe { core::ptr::read(item_ptr) };
 
@@ -66,13 +68,13 @@ impl<T, const N: usize> RingBuffer<T, N> {
         Some(item)
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         let head = self.head.load(Ordering::Relaxed);
         let tail = self.tail.load(Ordering::Relaxed);
         head.abs_diff(tail)
     }
 
-    fn iter(&self) -> Iter<'_, T, N> {
+    pub fn iter(&self) -> Iter<'_, T, N> {
         Iter {
             rb: self,
             index: 0,
@@ -80,7 +82,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
         }
     }
 
-    fn iter_mut(&mut self) -> IterMut<'_, T, N> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, T, N> {
         let len = self.len();
         IterMut {
             rb: self,
@@ -147,7 +149,8 @@ impl<'a, T, const N: usize> Iterator for IterMut<'a, T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let collection_start_ptr: *mut T = self.rb.buffer.get_mut().as_mut_ptr().cast::<T>();
+            let collection_start_ptr: *mut T =
+                unsafe { (*self.rb.buffer.get()).as_mut_ptr().cast::<T>() };
             let item_ptr = unsafe {
                 let head_offset = self.rb.head.load(Ordering::Relaxed);
                 collection_start_ptr.add(head_offset + self.index)
@@ -184,7 +187,7 @@ mod tests {
 
     #[test]
     fn enqueue() {
-        let mut rb: RingBuffer<i8, 3> = RingBuffer::new();
+        let rb: RingBuffer<i8, 3> = RingBuffer::new();
         let _ = rb.enqueue(1);
         let _ = rb.enqueue(2);
 
@@ -193,7 +196,7 @@ mod tests {
 
     #[test]
     fn enqueue_full() {
-        let mut rb: RingBuffer<i8, 3> = RingBuffer::new();
+        let rb: RingBuffer<i8, 3> = RingBuffer::new();
         let _ = rb.enqueue(1);
         let _ = rb.enqueue(2);
 
@@ -205,7 +208,7 @@ mod tests {
 
     #[test]
     fn dequeue() {
-        let mut rb: RingBuffer<i8, 3> = RingBuffer::new();
+        let rb: RingBuffer<i8, 3> = RingBuffer::new();
         let _ = rb.enqueue(1);
         let _ = rb.enqueue(2);
 
@@ -218,7 +221,7 @@ mod tests {
 
     #[test]
     fn dequeue_none() {
-        let mut rb: RingBuffer<i8, 3> = RingBuffer::new();
+        let rb: RingBuffer<i8, 3> = RingBuffer::new();
         let _ = rb.enqueue(1);
         let _ = rb.enqueue(2);
 
@@ -234,7 +237,7 @@ mod tests {
 
     #[test]
     fn len() {
-        let mut rb: RingBuffer<i8, 3> = RingBuffer::new();
+        let rb: RingBuffer<i8, 3> = RingBuffer::new();
         assert_eq!(rb.len(), 0);
 
         let _ = rb.enqueue(1);
@@ -250,7 +253,7 @@ mod tests {
 
     #[test]
     fn iter() {
-        let mut rb: RingBuffer<i8, 4> = RingBuffer::new();
+        let rb: RingBuffer<i8, 4> = RingBuffer::new();
         let _ = rb.enqueue(1);
         let _ = rb.enqueue(2);
         let _ = rb.enqueue(3);
@@ -280,7 +283,7 @@ mod tests {
 
     #[test]
     fn into_iter() {
-        let mut rb: RingBuffer<i8, 4> = RingBuffer::new();
+        let rb: RingBuffer<i8, 4> = RingBuffer::new();
         let _ = rb.enqueue(1);
         let _ = rb.enqueue(2);
         let _ = rb.enqueue(3);

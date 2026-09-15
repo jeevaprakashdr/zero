@@ -41,15 +41,19 @@ impl<'a, T, const N: usize> Producer<'a, T, N> {
     }
 }
 
+unsafe impl<'a, T, const N: usize> Send for Producer<'a, T, N> {}
+
 pub struct Consumer<'a, T, const N: usize> {
     rb: &'a RingBuffer<T, N>,
     _marker: PhantomData<T>,
 }
 
+unsafe impl<'a, T, const N: usize> Send for Consumer<'a, T, N> {}
+
 impl<'a, T, const N: usize> Consumer<'a, T, N> {
     pub fn dequeue(&mut self) -> Option<T> {
-        let head = self.rb.head.load(Ordering::Acquire);
-        let tail = self.rb.tail.load(Ordering::Relaxed);
+        let tail = self.rb.tail.load(Ordering::Acquire);
+        let head = self.rb.head.load(Ordering::Relaxed);
 
         if head == tail {
             return None;

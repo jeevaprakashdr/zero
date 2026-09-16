@@ -78,7 +78,13 @@ impl<const N: usize> String<N> {
     }
 
     pub fn pop(&mut self) -> Option<u8> {
-        self.vec.pop()
+        let ch = self.chars().rev().next()?;
+
+        for _ in 0..ch.len_utf8() {
+            self.vec.pop();
+        }
+
+        Some(ch as u8)
     }
 
     pub fn clear(&mut self) {
@@ -247,11 +253,14 @@ mod tests {
 
     #[test]
     fn pop() {
-        let mut s: String<4> = String::from("abcd");
+        let mut s: String<4> = String::from("a");
+
+        assert!(s.push('b').is_ok());
+        let alpha = '\u{03B1}'; // bytes length of 2
+        assert!(s.push(alpha).is_ok());
 
         assert!(s.pop().is_some());
-        assert_eq!(s.len(), 3);
-        assert_eq!(s.as_str(), "abc");
+        assert_eq!(s.as_str().as_bytes(), "ab".as_bytes());
     }
 
     #[test]

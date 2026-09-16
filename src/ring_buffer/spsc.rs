@@ -1,6 +1,6 @@
 use core::{marker::PhantomData, mem::MaybeUninit, sync::atomic::Ordering};
 
-use crate::{RingBuffer, ring_buffer::Error};
+use crate::{Error, RingBuffer};
 
 impl<T, const N: usize> RingBuffer<T, N> {
     pub fn split(&self) -> (Producer<'_, T, N>, Consumer<'_, T, N>) {

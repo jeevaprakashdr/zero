@@ -5,6 +5,8 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
+use crate::Error;
+
 mod spsc;
 
 pub struct RingBuffer<T, const N: usize> {
@@ -12,11 +14,6 @@ pub struct RingBuffer<T, const N: usize> {
     buffer: UnsafeCell<MaybeUninit<[T; N]>>,
     head: AtomicUsize,
     tail: AtomicUsize,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    Full,
 }
 
 unsafe impl<T: Send, const N: usize> Sync for RingBuffer<T, N> {}

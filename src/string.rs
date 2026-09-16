@@ -4,15 +4,10 @@ use core::{
     str::Utf8Error,
 };
 
-use crate::Vec;
+use crate::{Error, Vec};
 
 pub struct String<const N: usize> {
     vec: Vec<u8, N>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    Full,
 }
 
 #[allow(dead_code)]
@@ -30,7 +25,7 @@ impl<const N: usize> String<N> {
     }
 
     pub fn len(&self) -> usize {
-        self.vec.len
+        self.vec.len()
     }
 
     pub fn from(s: &str) -> Self {
@@ -66,28 +61,16 @@ impl<const N: usize> String<N> {
     }
 
     pub fn push(&mut self, c: char) -> Result<(), Error> {
-        if self.vec.len < self.vec.capacity() {
-            let _ = self.vec.push(c as u8);
-            Ok(())
-        } else {
-            Err(Error::Full)
+        match c.len_utf8() {
+            1 => self.vec.push(c as u8),
+            _ => self
+                .vec
+                .extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes()),
         }
     }
 
     pub fn push_str(&mut self, s: &str) -> Result<(), Error> {
-        let bytes = s.bytes();
-        if self.vec.len + bytes.len() <= self.vec.capacity() {
-            let dst_ptr = self.vec.data.as_mut_ptr() as *mut u8;
-            let src_ptr = s.as_ptr() as *mut u8;
-            unsafe {
-                core::ptr::copy_nonoverlapping(src_ptr, dst_ptr.add(self.vec.len), bytes.len())
-            };
-
-            self.vec.len += bytes.len();
-            Ok(())
-        } else {
-            Err(Error::Full)
-        }
+        self.vec.extend_from_slice(s.as_bytes())
     }
 
     pub fn truncate(&mut self, len: usize) {
@@ -95,7 +78,13 @@ impl<const N: usize> String<N> {
     }
 
     pub fn pop(&mut self) -> Option<u8> {
-        self.vec.pop()
+        let ch = self.chars().rev().next()?;
+
+        for _ in 0..ch.len_utf8() {
+            self.vec.pop();
+        }
+
+        Some(ch as u8)
     }
 
     pub fn clear(&mut self) {
@@ -103,15 +92,11 @@ impl<const N: usize> String<N> {
     }
 
     pub fn as_str(&self) -> &str {
-        let ptr = self.vec.data.as_ptr() as *const u8;
-        let slice = unsafe { slice::from_raw_parts(ptr, self.vec.len) };
-        unsafe { core::str::from_utf8_unchecked(slice) }
+        unsafe { core::str::from_utf8_unchecked(&self.vec) }
     }
 
     pub fn as_mut_str(&mut self) -> &mut str {
-        let ptr = self.vec.data.as_mut_ptr() as *mut u8;
-        let slice = unsafe { slice::from_raw_parts_mut(ptr, self.vec.len) };
-        unsafe { core::str::from_utf8_unchecked_mut(slice) }
+        unsafe { core::str::from_utf8_unchecked_mut(&mut self.vec) }
     }
 }
 
@@ -233,20 +218,27 @@ mod tests {
 
     #[test]
     fn push() {
-        let mut s: String<4> = String::from("abc");
+        let mut s: String<4> = String::from("a");
 
-        assert!(s.push('1').is_ok());
-        assert_eq!(s.as_str(), "abc1");
-        assert_eq!(s.len(), 4);
+        let alpha = '\u{03B1}'; // bytes length of 2
+        assert!(s.push(alpha).is_ok());
+        assert!(s.push('b').is_ok());
+
+        assert_eq!(s.as_str().as_bytes(), "aαb".as_bytes());
+
+        assert!(s.push('c').is_err());
     }
 
     #[test]
     fn push_str() {
-        let mut s: String<4> = String::new();
+        let expected: String<3> = String::from("abc");
+
+        let mut s: String<3> = String::new();
 
         assert!(s.push_str("abc").is_ok());
         assert!(!s.is_empty());
         assert_eq!(s.len(), 3);
+        assert_eq!(s, expected.as_str());
     }
 
     #[test]
@@ -261,11 +253,14 @@ mod tests {
 
     #[test]
     fn pop() {
-        let mut s: String<4> = String::from("abcd");
+        let mut s: String<4> = String::from("a");
+
+        assert!(s.push('b').is_ok());
+        let alpha = '\u{03B1}'; // bytes length of 2
+        assert!(s.push(alpha).is_ok());
 
         assert!(s.pop().is_some());
-        assert_eq!(s.len(), 3);
-        assert_eq!(s.as_str(), "abc");
+        assert_eq!(s.as_str().as_bytes(), "ab".as_bytes());
     }
 
     #[test]

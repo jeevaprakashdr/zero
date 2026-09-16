@@ -1,15 +1,12 @@
 use core::{marker::PhantomData, mem::MaybeUninit, ops, slice};
 
+use crate::Error;
+
 #[allow(dead_code)]
 pub struct Vec<T, const N: usize> {
     pub(crate) _marker: PhantomData<T>,
     pub(crate) data: MaybeUninit<[T; N]>,
     pub(crate) len: usize,
-}
-
-#[derive(Debug)]
-pub enum Error {
-    Full,
 }
 
 #[allow(dead_code)]
@@ -65,6 +62,29 @@ impl<T, const N: usize> Vec<T, N> {
 
     pub fn clear(&mut self) {
         self.truncate(0);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn extend_from_slice(&mut self, other: &[T]) -> Result<(), Error>
+    where
+        T: Clone,
+    {
+        if self.len() + other.len() <= self.capacity() {
+            for ele in other {
+                let _ = self.push(ele.clone());
+            }
+
+            Ok(())
+        } else {
+            Err(Error::Full)
+        }
     }
 }
 
@@ -204,6 +224,74 @@ mod tests {
     }
 
     #[test]
+    fn truncate() {
+        let mut v: Vec<i8, 5> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+        let _ = v.push(3);
+        let _ = v.push(4);
+        let _ = v.push(5);
+
+        v.truncate(2);
+
+        assert_eq!(v.len, 2);
+
+        let mut items = v.iter();
+        assert_eq!(items.next(), Some(&1));
+        assert_eq!(items.next(), Some(&2));
+        assert_eq!(items.next(), None);
+    }
+
+    #[test]
+    fn clear() {
+        let mut v: Vec<i8, 2> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+
+        v.clear();
+
+        assert_eq!(v.len, 0);
+        assert!(v.is_empty());
+
+        let mut items = v.iter();
+        assert_eq!(items.next(), None);
+    }
+
+    #[test]
+    fn is_empty() {
+        let mut v: Vec<i8, 2> = vec::Vec::new();
+
+        assert_eq!(v.is_empty(), true);
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+
+        assert_eq!(v.is_empty(), false);
+    }
+
+    #[test]
+    fn len() {
+        let mut v: Vec<i8, 3> = vec::Vec::new();
+
+        let _ = v.push(1);
+        let _ = v.push(2);
+
+        assert_eq!(v.len(), 2);
+    }
+
+    #[test]
+    fn extend_from_slice() {
+        let mut v: Vec<u8, 10> = vec::Vec::new();
+        let _ = v.push(1);
+        let _ = v.push(2);
+
+        assert_eq!(v.extend_from_slice("abc".as_bytes()).is_ok(), true);
+        assert_eq!(v.len(), 5);
+    }
+
+    #[test]
     fn iter() {
         let mut v: Vec<i8, 5> = vec::Vec::new();
 
@@ -244,42 +332,6 @@ mod tests {
         let mut items = v.iter_mut();
         assert_eq!(items.next(), Some(&mut 1));
         assert_eq!(items.next(), Some(&mut 2));
-        assert_eq!(items.next(), None);
-    }
-
-    #[test]
-    fn truncate() {
-        let mut v: Vec<i8, 5> = vec::Vec::new();
-
-        let _ = v.push(1);
-        let _ = v.push(2);
-        let _ = v.push(3);
-        let _ = v.push(4);
-        let _ = v.push(5);
-
-        v.truncate(2);
-
-        assert_eq!(v.len, 2);
-
-        let mut items = v.iter();
-        assert_eq!(items.next(), Some(&1));
-        assert_eq!(items.next(), Some(&2));
-        assert_eq!(items.next(), None);
-    }
-
-    #[test]
-    fn clear() {
-        let mut v: Vec<i8, 2> = vec::Vec::new();
-
-        let _ = v.push(1);
-        let _ = v.push(2);
-
-        v.clear();
-
-        assert_eq!(v.len, 0);
-        assert!(v.is_empty());
-
-        let mut items = v.iter();
         assert_eq!(items.next(), None);
     }
 

@@ -4,15 +4,10 @@ use core::{
     str::Utf8Error,
 };
 
-use crate::Vec;
+use crate::{Error, Vec};
 
 pub struct String<const N: usize> {
     vec: Vec<u8, N>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    Full,
 }
 
 #[allow(dead_code)]

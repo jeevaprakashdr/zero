@@ -1,15 +1,12 @@
 use core::{marker::PhantomData, mem::MaybeUninit, ops, slice};
 
+use crate::Error;
+
 #[allow(dead_code)]
 pub struct Vec<T, const N: usize> {
     pub(crate) _marker: PhantomData<T>,
     pub(crate) data: MaybeUninit<[T; N]>,
     pub(crate) len: usize,
-}
-
-#[derive(Debug)]
-pub enum Error {
-    Full,
 }
 
 #[allow(dead_code)]

@@ -6,3 +6,8 @@ mod vec;
 
 pub use ring_buffer::RingBuffer;
 pub use vec::Vec;
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+    Full,
+}

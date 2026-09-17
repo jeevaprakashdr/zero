@@ -71,6 +71,10 @@ impl<T, const N: usize> RingBuffer<T, N> {
         head.abs_diff(tail)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn iter(&self) -> Iter<'_, T, N> {
         Iter {
             rb: self,
@@ -126,8 +130,7 @@ impl<'a, T, const N: usize> Iterator for Iter<'a, T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.len {
-            let buffer_raw_ptr =
-                unsafe { (*self.rb.buffer.get()).as_ptr().cast::<T>() as *const T };
+            let buffer_raw_ptr = unsafe { (*self.rb.buffer.get()).as_ptr().cast::<T>() };
 
             let item_ptr = unsafe {
                 let head_offset = self.rb.head.load(Ordering::Relaxed);
@@ -246,6 +249,18 @@ mod tests {
 
         let _ = rb.dequeue();
         assert_eq!(rb.len(), 0);
+    }
+
+    #[test]
+    fn is_empty() {
+        let rb: RingBuffer<i8, 3> = RingBuffer::new();
+        assert_eq!(rb.is_empty(), true);
+
+        let _ = rb.enqueue(1);
+        assert_eq!(rb.is_empty(), false);
+
+        let _ = rb.dequeue();
+        assert_eq!(rb.is_empty(), true);
     }
 
     #[test]

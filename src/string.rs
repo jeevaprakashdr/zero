@@ -72,7 +72,7 @@ impl<const N: usize> String<N> {
     }
 
     pub fn pop(&mut self) -> Option<u8> {
-        let ch = self.chars().rev().next()?;
+        let ch = self.chars().next_back()?;
 
         for _ in 0..ch.len_utf8() {
             self.vec.pop();

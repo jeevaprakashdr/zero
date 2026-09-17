@@ -28,12 +28,6 @@ impl<const N: usize> String<N> {
         self.vec.len()
     }
 
-    pub fn from(s: &str) -> Self {
-        let mut new = String::new();
-        new.push_str(s).unwrap();
-        new
-    }
-
     pub fn from_utf8(v: Vec<u8, N>) -> Result<String<N>, Utf8Error> {
         {
             let ptr = v.data.as_ptr() as *const u8;
@@ -127,6 +121,14 @@ impl<const N: usize> DerefMut for String<N> {
     }
 }
 
+impl<const N: usize> From<&str> for String<N> {
+    fn from(value: &str) -> Self {
+        let mut new = String::new();
+        new.push_str(value).unwrap();
+        new
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -142,21 +144,21 @@ mod tests {
 
     #[test]
     fn len() {
-        let s: String<6> = String::from("abc");
+        let s: String<6> = "abc".into();
 
         assert_eq!(s.len(), 3);
     }
 
     #[test]
     fn capacity() {
-        let s: String<6> = String::from("abc");
+        let s: String<6> = "abc".into();
 
         assert_eq!(s.capacity(), 6);
     }
 
     #[test]
     fn from() {
-        let s: String<3> = String::from("abc");
+        let s: String<3> = "abc".into();
 
         assert!(!s.is_empty());
         assert_eq!(s.len(), 3);
@@ -186,8 +188,7 @@ mod tests {
 
     #[test]
     fn into_bytes() {
-        let str = "abc";
-        let s: String<3> = String::from(str);
+        let s: String<3> = "abc".into();
 
         let actual: Vec<u8, 3> = s.into_bytes();
 
@@ -197,8 +198,7 @@ mod tests {
 
     #[test]
     fn as_bytes() {
-        let str = "abc";
-        let s: String<3> = String::from(str);
+        let s: String<3> = "abc".into();
 
         let actual: &[u8] = s.as_bytes();
 
@@ -207,8 +207,7 @@ mod tests {
 
     #[test]
     fn as_bytes_mut() {
-        let str = "abc";
-        let mut s: String<3> = String::from(str);
+        let mut s: String<3> = "abc".into();
 
         let actual: &mut [u8] = s.as_bytes_mut();
         actual[0] = 'z' as u8;
@@ -231,7 +230,7 @@ mod tests {
 
     #[test]
     fn push_str() {
-        let expected: String<3> = String::from("abc");
+        let expected: String<3> = "abc".into();
 
         let mut s: String<3> = String::new();
 
@@ -243,7 +242,7 @@ mod tests {
 
     #[test]
     fn truncate() {
-        let mut s: String<4> = String::from("abcd");
+        let mut s: String<4> = "abcd".into();
 
         s.truncate(2);
 
@@ -253,7 +252,7 @@ mod tests {
 
     #[test]
     fn pop() {
-        let mut s: String<4> = String::from("a");
+        let mut s: String<4> = "a".into();
 
         assert!(s.push('b').is_ok());
         let alpha = '\u{03B1}'; // bytes length of 2
@@ -282,7 +281,7 @@ mod tests {
 
     #[test]
     fn clear() {
-        let mut s: String<4> = String::from("abcd");
+        let mut s: String<4> = "abcd".into();
 
         s.clear();
 
@@ -293,14 +292,14 @@ mod tests {
 
     #[test]
     fn as_str() {
-        let s: String<3> = String::from("abc");
+        let s: String<3> = "abc".into();
 
         assert_eq!(s.as_str(), "abc");
     }
 
     #[test]
     fn as_mut_str() {
-        let mut s: String<3> = String::from("abc");
+        let mut s: String<3> = "abc".into();
 
         let s = s.as_mut_str();
         s.make_ascii_uppercase();
@@ -310,8 +309,7 @@ mod tests {
 
     #[test]
     fn deref() {
-        let s: String<4> = String::from("abcd");
-
+        let s: String<4> = "abcd".into();
         let str: &str = &s;
 
         assert_eq!(&str, &"abcd");
@@ -319,7 +317,7 @@ mod tests {
 
     #[test]
     fn deref_mut() {
-        let mut s: String<4> = String::from("abcd");
+        let mut s: String<4> = "abcd".into();
 
         s.make_ascii_uppercase();
 

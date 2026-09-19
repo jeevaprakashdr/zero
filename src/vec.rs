@@ -86,6 +86,12 @@ impl<T, const N: usize> Vec<T, N> {
             Err(Error::Full)
         }
     }
+
+    pub fn swap_remove(&mut self, index: usize) -> T {
+        let length = self.len();
+        self.swap(index, length - 1);
+        self.pop().unwrap()
+    }
 }
 
 impl<T, const N: usize> PartialEq<Vec<T, N>> for Vec<T, N>
@@ -289,6 +295,23 @@ mod tests {
 
         assert_eq!(v.extend_from_slice("abc".as_bytes()).is_ok(), true);
         assert_eq!(v.len(), 5);
+    }
+
+    #[test]
+    fn swap_remove() {
+        let mut v: Vec<u8, 5> = vec::Vec::new();
+        let _ = v.push(1);
+        let _ = v.push(2);
+        let _ = v.push(3);
+        let _ = v.push(4);
+
+        assert_eq!(v.swap_remove(2), 3);
+
+        let mut iter = v.iter();
+        assert_eq!(iter.next(), Some(&1));
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&4));
+        assert_eq!(iter.next(), None);
     }
 
     #[test]

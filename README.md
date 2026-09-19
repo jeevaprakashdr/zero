@@ -7,6 +7,7 @@
 - [`Vec`]: A vector.
 - [`String`]: A string.
 - [`SPSC`]: A lock-free single-producer, single-consumer queue.
+- [`LinearMap`]: A linear map, a key-value data structure. 
 
 
 ### Acknowledgments & Learning Path

@@ -1,4 +1,9 @@
-use core::{mem, slice};
+use core::{
+    borrow::Borrow,
+    mem,
+    ops::{Index, IndexMut},
+    slice,
+};
 
 use crate::{Error, Vec};
 
@@ -55,16 +60,32 @@ where
         }
     }
 
-    pub fn conatains_key(&self, key: Key) -> bool {
+    pub fn conatains_key<Q>(&self, key: &Q) -> bool
+    where
+        Key: Borrow<Q>,
+        Q: Eq + ?Sized,
+    {
         self.get(key).is_some()
     }
 
-    pub fn get(&self, key: Key) -> Option<&Value> {
-        self.iter().find(|&(k, _)| *k == key).map(|(_, v)| v)
+    pub fn get<Q>(&self, key: &Q) -> Option<&Value>
+    where
+        Key: Borrow<Q>,
+        Q: Eq + ?Sized,
+    {
+        self.iter()
+            .find(|&(k, _)| k.borrow() == key)
+            .map(|(_, v)| v)
     }
 
-    pub fn get_mut(&mut self, key: Key) -> Option<&mut Value> {
-        self.iter_mut().find(|&(k, _)| *k == key).map(|(_, v)| v)
+    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut Value>
+    where
+        Key: Borrow<Q>,
+        Q: Eq + ?Sized,
+    {
+        self.iter_mut()
+            .find(|&(k, _)| k.borrow() == key)
+            .map(|(_, v)| v)
     }
 
     pub fn keys(&self) -> impl Iterator<Item = &Key> {
@@ -87,6 +108,28 @@ where
             .map(|(idx, _)| idx);
 
         idx.map(|idx| self.buffer.swap_remove(idx).1)
+    }
+}
+
+impl<'a, K, V, const N: usize, Q> IndexMut<&'a Q> for LinearMap<K, V, N>
+where
+    K: Borrow<Q> + Eq,
+    Q: Eq + ?Sized,
+{
+    fn index_mut(&mut self, key: &Q) -> &mut V {
+        self.get_mut(key).expect("no entry found for key")
+    }
+}
+
+impl<'a, K, V, const N: usize, Q> Index<&'a Q> for LinearMap<K, V, N>
+where
+    K: Borrow<Q> + Eq,
+    Q: Eq + ?Sized,
+{
+    type Output = V;
+
+    fn index(&self, key: &Q) -> &V {
+        self.get(key).expect("no entry found for key")
     }
 }
 
@@ -277,5 +320,27 @@ mod tests {
         assert_eq!(iter.next(), Some(&"k1"));
         assert_eq!(iter.next(), Some(&"k3"));
         assert_eq!(iter.next(), None)
+    }
+
+    #[test]
+    fn index() {
+        let mut map: LinearMap<&str, i32, 5> = LinearMap::new();
+        let _ = map.insert("k1", 1);
+        let _ = map.insert("k2", 2);
+        let _ = map.insert("k3", 3);
+
+        assert_eq!(map["k1"], 1);
+    }
+
+    #[test]
+    fn index_mut() {
+        let mut map: LinearMap<&str, i32, 5> = LinearMap::new();
+        let _ = map.insert("k1", 1);
+        let _ = map.insert("k2", 2);
+        let _ = map.insert("k3", 3);
+
+        map["k1"] *= 10;
+
+        assert_eq!(map["k1"], 10);
     }
 }

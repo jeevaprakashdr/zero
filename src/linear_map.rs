@@ -18,7 +18,7 @@ impl<Key, Value, const N: usize> LinearMap<Key, Value, N>
 where
     Key: Eq,
 {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         LinearMap { buffer: Vec::new() }
     }
 

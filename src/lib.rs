@@ -1,6 +1,7 @@
 #![no_std]
 #![allow(dead_code)]
 
+mod binary_heap;
 mod linear_map;
 mod ring_buffer;
 mod string;

@@ -111,7 +111,7 @@ where
     }
 }
 
-impl<'a, K, V, const N: usize, Q> IndexMut<&'a Q> for LinearMap<K, V, N>
+impl<K, V, const N: usize, Q> IndexMut<&Q> for LinearMap<K, V, N>
 where
     K: Borrow<Q> + Eq,
     Q: Eq + ?Sized,
@@ -121,7 +121,7 @@ where
     }
 }
 
-impl<'a, K, V, const N: usize, Q> Index<&'a Q> for LinearMap<K, V, N>
+impl<K, V, const N: usize, Q> Index<&Q> for LinearMap<K, V, N>
 where
     K: Borrow<Q> + Eq,
     Q: Eq + ?Sized,
@@ -145,7 +145,7 @@ where
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|&(ref k, ref v)| (k, v))
+        self.iter.next().map(|(k, v)| (k, v))
     }
 }
 

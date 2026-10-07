@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn new() {
-        let bh: BinaryHeap<i32, 5, Max> = BinaryHeap::new();
+        let _bh: BinaryHeap<i32, 5, Max> = BinaryHeap::new();
     }
 
     #[test]

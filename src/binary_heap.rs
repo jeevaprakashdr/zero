@@ -1,4 +1,4 @@
-use core::{cmp::Ordering, marker::PhantomData, slice};
+use core::{cmp::Ordering, marker::PhantomData, mem, slice};
 
 use crate::Vec;
 
@@ -54,11 +54,11 @@ where
         self.data.clear()
     }
 
-    fn iter(&self) -> slice::Iter<'_, T> {
+    pub fn iter(&self) -> slice::Iter<'_, T> {
         self.data.iter()
     }
 
-    fn push(&mut self, item: T) -> Result<(), crate::Error> {
+    pub fn push(&mut self, item: T) -> Result<(), crate::Error> {
         let result = self.data.push(item);
 
         match result {
@@ -78,6 +78,44 @@ where
                 Ok(())
             }
         }
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        self.data.pop().map(|mut item| {
+            if !self.is_empty() {
+                mem::swap(&mut item, &mut self.data[0]);
+                let mut current = 0;
+                let end = self.data.len();
+
+                while current < end {
+                    let left_child = current * 2 + 1;
+                    let right_child = current * 2 + 2;
+
+                    if left_child >= end {
+                        break;
+                    }
+
+                    let mut target = current;
+                    if (self.data[left_child]).cmp(&self.data[target]) == K::ordering() {
+                        target = left_child;
+                    }
+
+                    if right_child < end
+                        && (self.data[right_child]).cmp(&self.data[target]) == K::ordering()
+                    {
+                        target = right_child;
+                    }
+
+                    if (self.data[target]).cmp(&self.data[current]) == K::ordering() {
+                        self.data.swap(target, current);
+                        current = target;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            item
+        })
     }
 }
 
@@ -160,5 +198,59 @@ mod tests {
         assert_eq!(iter.next(), Some(&2));
         assert_eq!(iter.next(), Some(&4));
         assert_eq!(iter.next(), Some(&3));
+    }
+
+    #[test]
+    fn pop_max() {
+        let mut bh: BinaryHeap<i32, 6, Max> = BinaryHeap::new();
+
+        let _ = bh.push(1);
+        let _ = bh.push(2);
+        let _ = bh.push(7);
+        let _ = bh.push(17);
+        let _ = bh.push(3);
+        let _ = bh.push(10);
+
+        assert_eq!(bh.pop().unwrap(), 17);
+
+        let mut iter = bh.iter();
+        assert_eq!(iter.next(), Some(&10));
+        assert_eq!(iter.next(), Some(&7));
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&1));
+        assert_eq!(iter.next(), Some(&3));
+
+        assert_eq!(bh.pop().unwrap(), 10);
+        assert_eq!(bh.pop().unwrap(), 7);
+        assert_eq!(bh.pop().unwrap(), 3);
+        assert_eq!(bh.pop().unwrap(), 2);
+        assert_eq!(bh.pop().unwrap(), 1);
+    }
+
+    #[test]
+    fn pop_min() {
+        let mut bh: BinaryHeap<i32, 6, Min> = BinaryHeap::new();
+
+        let _ = bh.push(7);
+        let _ = bh.push(17);
+        let _ = bh.push(10);
+        let _ = bh.push(1);
+        let _ = bh.push(5);
+        let _ = bh.push(3);
+
+        assert_eq!(bh.pop().unwrap(), 1);
+
+        let mut iter = bh.iter();
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&5));
+        assert_eq!(iter.next(), Some(&10));
+        assert_eq!(iter.next(), Some(&17));
+        assert_eq!(iter.next(), Some(&7));
+
+        assert_eq!(bh.pop().unwrap(), 3);
+        assert_eq!(bh.pop().unwrap(), 5);
+        assert_eq!(bh.pop().unwrap(), 7);
+        assert_eq!(bh.pop().unwrap(), 10);
+        assert_eq!(bh.pop().unwrap(), 17);
     }
 }

@@ -64,17 +64,7 @@ where
         match result {
             Err(_) => result,
             Ok(_) => {
-                let mut child_index = self.data.len() - 1;
-                while child_index > 0 {
-                    let parent_index = (child_index - 1) / 2;
-
-                    if (self.data[child_index]).cmp(&self.data[parent_index]) == K::ordering() {
-                        self.data.swap(child_index, parent_index);
-                        child_index = parent_index;
-                    } else {
-                        break;
-                    }
-                }
+                self.push_element_up();
                 Ok(())
             }
         }
@@ -84,38 +74,56 @@ where
         self.data.pop().map(|mut item| {
             if !self.is_empty() {
                 mem::swap(&mut item, &mut self.data[0]);
-                let mut current = 0;
-                let end = self.data.len();
-
-                while current < end {
-                    let left_child = current * 2 + 1;
-                    let right_child = current * 2 + 2;
-
-                    if left_child >= end {
-                        break;
-                    }
-
-                    let mut target = current;
-                    if (self.data[left_child]).cmp(&self.data[target]) == K::ordering() {
-                        target = left_child;
-                    }
-
-                    if right_child < end
-                        && (self.data[right_child]).cmp(&self.data[target]) == K::ordering()
-                    {
-                        target = right_child;
-                    }
-
-                    if (self.data[target]).cmp(&self.data[current]) == K::ordering() {
-                        self.data.swap(target, current);
-                        current = target;
-                    } else {
-                        break;
-                    }
-                }
+                self.push_elements_down();
             }
             item
         })
+    }
+
+    fn push_element_up(&mut self) {
+        let mut child_index = self.data.len() - 1;
+        while child_index > 0 {
+            let parent_index = (child_index - 1) / 2;
+
+            if (self.data[child_index]).cmp(&self.data[parent_index]) == K::ordering() {
+                self.data.swap(child_index, parent_index);
+                child_index = parent_index;
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn push_elements_down(&mut self) {
+        let mut current = 0;
+        let end = self.data.len();
+
+        while current < end {
+            let left_child = current * 2 + 1;
+            let right_child = current * 2 + 2;
+
+            if left_child >= end {
+                break;
+            }
+
+            let mut target = current;
+            if (self.data[left_child]).cmp(&self.data[target]) == K::ordering() {
+                target = left_child;
+            }
+
+            if right_child < end
+                && (self.data[right_child]).cmp(&self.data[target]) == K::ordering()
+            {
+                target = right_child;
+            }
+
+            if (self.data[target]).cmp(&self.data[current]) == K::ordering() {
+                self.data.swap(target, current);
+                current = target;
+            } else {
+                break;
+            }
+        }
     }
 }
 
